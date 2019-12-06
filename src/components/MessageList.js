@@ -2,14 +2,22 @@ import React, { PureComponent } from 'react';
 import { Message } from './Message';
 import { withChannelContext } from '../context';
 import PropTypes from 'prop-types';
+import { EmptyStateIndicator } from './EmptyStateIndicator';
 import { ReverseInfiniteScroll } from './ReverseInfiniteScroll';
 import { MessageNotification } from './MessageNotification';
+import { MessageSimple } from './MessageSimple';
+import { Attachment } from './Attachment';
 import { LoadingIndicator } from './LoadingIndicator';
 import { DateSeparator } from './DateSeparator';
+import { EventComponent } from './EventComponent';
 import { KEY_CODES } from './AutoCompleteTextarea';
+import deepequal from 'deep-equal';
+import { MESSAGE_ACTIONS } from '../utils';
+
+/* eslint sonarjs/no-duplicate-string: 0 */
 
 /**
- * MessageList - The message list components renders a list of messages
+ * MessageList - The message list components renders a list of messages. Its a consumer of [Channel Context](https://getstream.github.io/stream-chat-react/#channel)
  *
  * @example ./docs/MessageList.md
  * @extends PureComponent
@@ -22,37 +30,134 @@ class MessageList extends PureComponent {
       newMessagesNotification: false,
       editing: '',
       online: true,
+      notifications: [],
     };
 
     this.bottomRef = React.createRef();
     this.messageList = React.createRef();
     this.messageRefs = {};
+    this.notificationTimeouts = [];
   }
   static propTypes = {
-    /** The attachment component to render, defaults to Attachment */
-    Attachment: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
-    /** A list of immutable messages */
-    messages: PropTypes.array.isRequired,
-    /** Via Context: The channel object */
-    channel: PropTypes.object.isRequired,
-    /** Via Context: The function to update a message, handled by the Channel component */
-    updateMessage: PropTypes.func.isRequired,
-    /** Via Context: The function is called when the list scrolls */
-    listenToScroll: PropTypes.func,
-    /** Typing indicator component to render  */
+    /**
+     * Typing indicator UI component to render
+     *
+     * Defaults to and accepts same props as: [TypingIndicator](https://github.com/GetStream/stream-chat-react/blob/master/src/components/TypingIndicator.js)
+     * */
     TypingIndicator: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
-    /** Date separator component to render  */
+    /**
+     * Date separator UI component to render
+     *
+     * Defaults to and accepts same props as: [DateSeparator](https://github.com/GetStream/stream-chat-react/blob/master/src/components/DateSeparator.js)
+     * */
     dateSeparator: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
     /** Turn off grouping of messages by user */
     noGroupByUser: PropTypes.bool,
     /** render HTML instead of markdown. Posting HTML is only allowed server-side */
     unsafeHTML: PropTypes.bool,
+    /** Set the limit to use when paginating messages */
+    messageLimit: PropTypes.number,
+    /**
+     * Array of allowed actions on message. e.g. ['edit', 'delete', 'mute', 'flag']
+     * If all the actions need to be disabled, empty array or false should be provided as value of prop.
+     * */
+    messageActions: PropTypes.oneOfType([PropTypes.bool, PropTypes.array]),
+    /**
+     * Boolean weather current message list is a thread.
+     */
+    threadList: PropTypes.bool,
+    /**
+     * Function that returns message/text as string to be shown as notification, when request for flagging a message is successful
+     *
+     * This function should accept following params:
+     *
+     * @param message A [message object](https://getstream.io/chat/docs/#message_format) which is flagged.
+     *
+     * */
+    getFlagMessageSuccessNotification: PropTypes.func,
+    /**
+     * Function that returns message/text as string to be shown as notification, when request for flagging a message runs into error
+     *
+     * This function should accept following params:
+     *
+     * @param message A [message object](https://getstream.io/chat/docs/#message_format) which is flagged.
+     *
+     * */
+    getFlagMessageErrorNotification: PropTypes.func,
+    /**
+     * Function that returns message/text as string to be shown as notification, when request for muting a user is successful
+     *
+     * This function should accept following params:
+     *
+     * @param user A user object which is being muted
+     *
+     * */
+    getMuteUserSuccessNotification: PropTypes.func,
+    /**
+     * Function that returns message/text as string to be shown as notification, when request for muting a user runs into error
+     *
+     * This function should accept following params:
+     *
+     * @param user A user object which is being muted
+     *
+     * */
+    getMuteUserErrorNotification: PropTypes.func,
+    /** **Available from [chat context](https://getstream.github.io/stream-chat-react/#chat)** */
+    client: PropTypes.object,
+    /** **Available from [channel context](https://getstream.github.io/stream-chat-react/#channel)** */
+    Attachment: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
+    /** **Available from [channel context](https://getstream.github.io/stream-chat-react/#channel)** */
+    Message: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
+    /**
+     * Custom UI component to display system messages.
+     *
+     * Defaults to and accepts same props as: [EventComponent](https://github.com/GetStream/stream-chat-react/blob/master/src/components/EventComponent.js)
+     */
+    MessageSystem: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
+    /**
+     * The UI Indicator to use when MessagerList or ChannelList is empty
+     * */
+    EmptyStateIndicator: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
+    /**
+     * Component to render at the top of the MessageList
+     * */
+    HeaderComponent: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
+    /** **Available from [channel context](https://getstream.github.io/stream-chat-react/#channel)** */
+    messages: PropTypes.array.isRequired,
+    /** **Available from [channel context](https://getstream.github.io/stream-chat-react/#channel)** */
+    channel: PropTypes.object.isRequired,
+    /** **Available from [channel context](https://getstream.github.io/stream-chat-react/#channel)** */
+    updateMessage: PropTypes.func.isRequired,
+    /** **Available from [channel context](https://getstream.github.io/stream-chat-react/#channel)** */
+    retrySendMessage: PropTypes.func,
+    /** **Available from [channel context](https://getstream.github.io/stream-chat-react/#channel)** */
+    removeMessage: PropTypes.func,
+    /** **Available from [channel context](https://getstream.github.io/stream-chat-react/#channel)** */
+    onMentionsClick: PropTypes.func,
+    /** **Available from [channel context](https://getstream.github.io/stream-chat-react/#channel)** */
+    onMentionsHover: PropTypes.func,
+    /** **Available from [channel context](https://getstream.github.io/stream-chat-react/#channel)** */
+    openThread: PropTypes.func,
+    /** **Available from [channel context](https://getstream.github.io/stream-chat-react/#channel)** */
+    members: PropTypes.object,
+    /** **Available from [channel context](https://getstream.github.io/stream-chat-react/#channel)** */
+    watchers: PropTypes.object,
+    /** **Available from [channel context](https://getstream.github.io/stream-chat-react/#channel)** */
+    read: PropTypes.object,
+    /** **Available from [channel context](https://getstream.github.io/stream-chat-react/#channel)** */
+    typing: PropTypes.object,
   };
 
   static defaultProps = {
+    Message: MessageSimple,
+    MessageSystem: EventComponent,
+    threadList: false,
+    Attachment,
     dateSeparator: DateSeparator,
+    EmptyStateIndicator,
     unsafeHTML: false,
     noGroupByUser: false,
+    messageActions: Object.keys(MESSAGE_ACTIONS),
   };
 
   connectionChanged = (event) => {
@@ -79,6 +184,9 @@ class MessageList extends PureComponent {
     this.props.client.off('connection.changed', this.connectionChanged);
 
     document.removeEventListener('keydown', this.keypress);
+    this.notificationTimeouts.forEach((ct) => {
+      clearTimeout(ct);
+    });
   }
 
   getSnapshotBeforeUpdate(prevProps) {
@@ -87,10 +195,16 @@ class MessageList extends PureComponent {
     }
     // Are we adding new items to the list?
     // Capture the scroll position so we can adjust scroll later.
-    if (prevProps.messages.length < this.props.messages.length) {
+
+    if (
+      prevProps.messages.length < this.props.messages.length ||
+      !deepequal(this.props.eventHistory, prevProps.eventHistory)
+    ) {
       const list = this.messageList.current;
-      const pos = list.scrollHeight - list.scrollTop;
-      return pos;
+      return {
+        offsetTop: list.scrollTop,
+        offsetBottom: list.scrollHeight - list.scrollTop,
+      };
     }
     return null;
   }
@@ -99,38 +213,7 @@ class MessageList extends PureComponent {
     // If we have a snapshot value, we've just added new items.
     // Adjust scroll so these new items don't push the old ones out of view.
     // (snapshot here is the value returned from getSnapshotBeforeUpdate)
-
-    if (snapshot !== null) {
-      const list = this.messageList.current;
-
-      // const scrollDown = () => {
-      //   list.scrollTop = list.scrollHeight - snapshot;
-      // };
-      // scrollDown();
-      // setTimeout(scrollDown, 100);
-
-      this.scrollToTarget(
-        list.scrollHeight - snapshot,
-        this.messageList.current,
-      );
-
-      // scroll down after images load again
-      if (
-        this.props.messages[this.props.messages.length - 1].user.id !==
-        this.props.client.user.id
-      ) {
-        setTimeout(
-          () =>
-            this.scrollToTarget(
-              list.scrollHeight - snapshot,
-              this.messageList.current,
-            ),
-          100,
-        );
-      }
-    }
-
-    // handle new messages being sent/received
+    const userScrolledUp = this.userScrolledUp();
     const currentLastMessage = this.props.messages[
       this.props.messages.length - 1
     ];
@@ -141,34 +224,43 @@ class MessageList extends PureComponent {
     }
 
     const hasNewMessage = currentLastMessage.id !== previousLastMessage.id;
-    const userScrolledUp = this.userScrolledUp();
     const isOwner = currentLastMessage.user.id === this.props.client.userID;
 
-    let scrollToBottom = false;
+    const list = this.messageList.current;
 
     // always scroll down when it's your own message that you added...
-    if (hasNewMessage && isOwner) {
-      scrollToBottom = true;
-    } else if (hasNewMessage && !userScrolledUp) {
-      scrollToBottom = true;
-    }
+    const scrollToBottom = hasNewMessage && (isOwner || !userScrolledUp);
 
     if (scrollToBottom) {
       this.scrollToBottom();
+      // Scroll further once attachments are laoded.
+      setTimeout(this.scrollToBottom, 100);
+
+      // remove the scroll notification if we already scrolled down...
+      this.state.newMessagesNotification &&
+        this.setState({ newMessagesNotification: false });
+
+      return;
+    }
+
+    if (snapshot !== null) {
+      // Maintain the offsetTop of scroll so that content in viewport doesn't move.
+      // This is for the case where user has scroll up significantly and a new message arrives from someone.
+      if (hasNewMessage) {
+        this.scrollToTarget(snapshot.offsetTop, this.messageList.current);
+      } else {
+        // Maintain the bottomOffset of scroll.
+        // This is for the case of pagination, when more messages get loaded.
+        this.scrollToTarget(
+          list.scrollHeight - snapshot.offsetBottom,
+          this.messageList.current,
+        );
+      }
     }
 
     // Check the scroll position... if you're scrolled up show a little notification
-    if (
-      !scrollToBottom &&
-      hasNewMessage &&
-      !this.state.newMessagesNotification
-    ) {
+    if (hasNewMessage && !this.state.newMessagesNotification) {
       this.setState({ newMessagesNotification: true });
-    }
-
-    // remove the scroll notification if we already scrolled down...
-    if (scrollToBottom && this.state.newMessagesNotification) {
-      this.setState({ newMessagesNotification: false });
     }
   }
 
@@ -243,12 +335,7 @@ class MessageList extends PureComponent {
         prevMessageDate = messages[i - 1].created_at.getDay();
       }
 
-      if (i === 0) {
-        newMessages.push(
-          { type: 'message.date', date: message.created_at },
-          message,
-        );
-      } else if (messageDate !== prevMessageDate) {
+      if (i === 0 || messageDate !== prevMessageDate) {
         newMessages.push(
           { type: 'message.date', date: message.created_at },
           message,
@@ -256,7 +343,71 @@ class MessageList extends PureComponent {
       } else {
         newMessages.push(message);
       }
+
+      const eventsNextToMessage = this.props.eventHistory[
+        message.id || 'first'
+      ];
+      if (eventsNextToMessage && eventsNextToMessage.length > 0) {
+        eventsNextToMessage.forEach((e) => {
+          newMessages.push({
+            type: 'channel.event',
+            event: e,
+          });
+        });
+      }
     }
+
+    return newMessages;
+  };
+
+  insertIntro = (messages) => {
+    const newMessages = messages || [];
+    // if no headerPosition is set, HeaderComponent will go at the top
+    if (!this.props.headerPosition) {
+      newMessages.unshift({
+        type: 'channel.intro',
+        // created_at: new Date(0),
+      });
+      return newMessages;
+    }
+
+    // if no messages, intro get's inserted
+    if (!newMessages.length) {
+      newMessages.unshift({
+        type: 'channel.intro',
+      });
+      return newMessages;
+    }
+
+    // else loop over the messages
+    for (const [i, message] of messages.entries()) {
+      const messageTime = message.created_at
+        ? message.created_at.getTime()
+        : null;
+      const nextMessageTime =
+        messages[i + 1] && messages[i + 1].created_at
+          ? messages[i + 1].created_at.getTime()
+          : null;
+      const { headerPosition } = this.props;
+
+      // headerposition is smaller than message time so comes after;
+      if (messageTime < headerPosition) {
+        // if header position is also smaller than message time continue;
+        if (nextMessageTime < headerPosition) {
+          if (messages[i + 1] && messages[i + 1].type === 'message.date')
+            continue;
+          if (!nextMessageTime) {
+            newMessages.push({ type: 'channel.intro' });
+            return newMessages;
+          }
+          continue;
+        } else {
+          newMessages.splice(i + 1, 0, { type: 'channel.intro' });
+          return newMessages;
+        }
+      }
+    }
+
     return newMessages;
   };
 
@@ -298,7 +449,6 @@ class MessageList extends PureComponent {
 
   listenToScroll = (offset) => {
     this.scrollOffset = offset;
-
     if (this.state.newMessagesNotification && !this.userScrolledUp()) {
       this.setState({
         newMessagesNotification: false,
@@ -333,14 +483,27 @@ class MessageList extends PureComponent {
       const message = messages[i];
       const nextMessage = messages[i + 1];
       const groupStyles = [];
+
       if (message.type === 'message.date') {
         continue;
       }
+
+      if (message.type === 'channel.event') {
+        continue;
+      }
+
+      if (message.type === 'channel.intro') {
+        continue;
+      }
+
       const userId = message.user.id;
 
       const isTopMessage =
         !previousMessage ||
+        previousMessage.type === 'channel.intro' ||
         previousMessage.type === 'message.date' ||
+        previousMessage.type === 'system' ||
+        previousMessage.type === 'channel.event' ||
         previousMessage.attachments.length !== 0 ||
         userId !== previousMessage.user.id ||
         previousMessage.type === 'error' ||
@@ -349,6 +512,9 @@ class MessageList extends PureComponent {
       const isBottomMessage =
         !nextMessage ||
         nextMessage.type === 'message.date' ||
+        nextMessage.type === 'system' ||
+        nextMessage.type === 'channel.event' ||
+        nextMessage.type === 'channel.intro' ||
         nextMessage.attachments.length !== 0 ||
         userId !== nextMessage.user.id ||
         nextMessage.type === 'error' ||
@@ -412,20 +578,69 @@ class MessageList extends PureComponent {
     }
   };
 
+  /**
+   * Adds a temporary notification to message list.
+   * Notification will be removed after 5 seconds.
+   *
+   * @param notificationText  Text of notification to be added
+   * @param type              Type of notification. success | error
+   */
+  addNotification = (notificationText, type) => {
+    if (typeof notificationText !== 'string') return;
+    if (type !== 'success' && type !== 'error') return;
+
+    const nextIndex = new Date();
+
+    const newNotifications = [...this.state.notifications];
+    newNotifications.push({
+      id: nextIndex,
+      text: notificationText,
+      type,
+    });
+    this.setState({
+      notifications: newNotifications,
+    });
+
+    // remove the notification after 5000 ms
+    const ct = setTimeout(() => {
+      const index = this.state.notifications.findIndex((notification) => {
+        if (notification.id === nextIndex) return true;
+        return false;
+      });
+      const newNotifications = [...this.state.notifications];
+      newNotifications.splice(index, 1);
+      this.setState({
+        notifications: newNotifications,
+      });
+    }, 5000);
+
+    this.notificationTimeouts.push(ct);
+  };
+
+  _loadMore = () =>
+    this.props.messageLimit
+      ? this.props.loadMore(this.props.messageLimit)
+      : this.props.loadMore();
+
+  // eslint-disable-next-line
   render() {
     let allMessages = [...this.props.messages];
-
+    const MessageSystem = this.props.MessageSystem;
     allMessages = this.insertDates(allMessages);
-
+    if (this.props.HeaderComponent) {
+      allMessages = this.insertIntro(allMessages);
+    }
     const messageGroupStyles = this.getGroupStyles(allMessages);
 
-    const TypingIndicator = this.props.TypingIndicator;
-    const DateSeparator = this.props.dateSeparator;
+    const {
+      TypingIndicator,
+      dateSeparator: DateSeparator,
+      HeaderComponent,
+      EmptyStateIndicator,
+    } = this.props;
 
     // sort by date
-    allMessages.sort(function(a, b) {
-      return a.created_at - b.created_at;
-    });
+    allMessages.sort((a, b) => a.created_at - b.created_at);
 
     // get the readData
     const readData = this.getReadStates(allMessages);
@@ -448,6 +663,30 @@ class MessageList extends PureComponent {
             <DateSeparator date={message.date} />
           </li>,
         );
+      } else if (message.type === 'channel.intro') {
+        elements.push(
+          <li key="intro">
+            <HeaderComponent />
+          </li>,
+        );
+      } else if (
+        message.type === 'channel.event' ||
+        message.type === 'system'
+      ) {
+        MessageSystem &&
+          elements.push(
+            <li
+              key={
+                message.type === 'system'
+                  ? message.created_at
+                  : message.type === 'channel.event'
+                  ? message.event.created_at
+                  : ''
+              }
+            >
+              <MessageSystem message={message} />
+            </li>,
+          );
       } else if (message.type !== 'message.read') {
         let groupStyles = messageGroupStyles[message.id];
         if (!groupStyles) {
@@ -475,12 +714,13 @@ class MessageList extends PureComponent {
               editing={
                 !!(this.state.editing && this.state.editing === message.id)
               }
-              channel={this.props.channel}
-              threadList={this.props.threadList}
               clearEditingState={this.clearEditingState}
               setEditingState={this.setEditingState}
               messageListRect={this.state.messageListRect}
+              channel={this.props.channel}
+              threadList={this.props.threadList}
               retrySendMessage={this.props.retrySendMessage}
+              addNotification={this.addNotification}
               updateMessage={this.props.updateMessage}
               removeMessage={this.props.removeMessage}
               Message={this.props.Message}
@@ -488,6 +728,19 @@ class MessageList extends PureComponent {
               Attachment={this.props.Attachment}
               onMentionsClick={this.props.onMentionsClick}
               onMentionsHover={this.props.onMentionsHover}
+              messageActions={this.props.messageActions}
+              getFlagMessageSuccessNotification={
+                this.props.getFlagMessageSuccessNotification
+              }
+              getFlagMessageErrorNotification={
+                this.props.getFlagMessageErrorNotification
+              }
+              getMuteUserSuccessNotification={
+                this.props.getMuteUserSuccessNotification
+              }
+              getMuteUserErrorNotification={
+                this.props.getMuteUserErrorNotification
+              }
             />
           </li>,
         );
@@ -501,31 +754,44 @@ class MessageList extends PureComponent {
           }`}
           ref={this.messageList}
         >
-          <ReverseInfiniteScroll
-            loadMore={this.props.loadMore}
-            hasMore={this.props.hasMore}
-            isLoading={this.props.loadingMore}
-            listenToScroll={this.listenToScroll}
-            useWindow={false}
-            loader={
-              <Center key="loadingindicator">
-                <LoadingIndicator size={20} />
-              </Center>
-            }
-          >
-            <ul className="str-chat__ul">{elements}</ul>
-            {this.props.TypingIndicator && (
-              <TypingIndicator
-                typing={this.props.typing}
-                client={this.props.client}
-              />
-            )}
-            <div key="bottom" ref={this.bottomRef} />
-          </ReverseInfiniteScroll>
+          {!elements.length ? (
+            <EmptyStateIndicator listType="message" />
+          ) : (
+            <ReverseInfiniteScroll
+              loadMore={this._loadMore}
+              hasMore={this.props.hasMore}
+              isLoading={this.props.loadingMore}
+              listenToScroll={this.listenToScroll}
+              useWindow={false}
+              loader={
+                <Center key="loadingindicator">
+                  <LoadingIndicator size={20} />
+                </Center>
+              }
+            >
+              <ul className="str-chat__ul">{elements}</ul>
+              {this.props.TypingIndicator && (
+                <TypingIndicator
+                  typing={this.props.typing}
+                  client={this.props.client}
+                />
+              )}
+              <div key="bottom" ref={this.bottomRef} />
+            </ReverseInfiniteScroll>
+          )}
         </div>
 
         <div className="str-chat__list-notifications">
-          <Notification active={!this.state.online}>
+          {this.state.notifications.map((notification) => (
+            <Notification
+              active={true}
+              key={notification.id}
+              type={notification.type}
+            >
+              {notification.text}
+            </Notification>
+          ))}
+          <Notification active={!this.state.online} type="error">
             Connection failure, reconnecting now...
           </Notification>
 
@@ -550,9 +816,13 @@ const Center = ({ children }) => (
   </div>
 );
 
-const Notification = ({ children, active }) => {
+const Notification = ({ children, active, type }) => {
   if (active) {
-    return <div className="str-chat__connection-issue">{children}</div>;
+    return (
+      <div className={`str-chat__custom-notification notification-${type}`}>
+        {children}
+      </div>
+    );
   }
   return null;
 };

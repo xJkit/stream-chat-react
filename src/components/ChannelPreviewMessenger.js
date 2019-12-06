@@ -1,19 +1,40 @@
 import React, { PureComponent } from 'react';
+import PropTypes from 'prop-types';
+
 import { Avatar } from './Avatar';
 
 import truncate from 'lodash/truncate';
 
+/**
+ * Used as preview component for channel item in [ChannelList](#channellist) component.
+ * Its best suited for messenger type chat.
+ *
+ * @example ./docs/ChannelPreviewMessenger.md
+ * @extends PureComponent
+ */
 export class ChannelPreviewMessenger extends PureComponent {
+  static propTypes = {
+    /** **Available from [chat context](https://getstream.github.io/stream-chat-react/#chat)** */
+    setActiveChannel: PropTypes.func,
+    /** **Available from [chat context](https://getstream.github.io/stream-chat-react/#chat)** */
+    channel: PropTypes.object,
+    closeMenu: PropTypes.func,
+    unread: PropTypes.number,
+    /** If channel of component is active (selected) channel */
+    active: PropTypes.bool,
+    latestMessage: PropTypes.string,
+  };
+
   channelPreviewButton = React.createRef();
 
   onSelectChannel = () => {
-    this.props.setActiveChannel(this.props.channel);
+    this.props.setActiveChannel(this.props.channel, this.props.watchers);
     this.channelPreviewButton.current.blur();
     this.props.closeMenu();
   };
   render() {
     const unreadClass =
-      this.props.unread_count >= 1
+      this.props.unread >= 1
         ? 'str-chat__channel-preview-messenger--unread'
         : '';
     const activeClass = this.props.active
@@ -33,7 +54,7 @@ export class ChannelPreviewMessenger extends PureComponent {
         </div>
         <div className="str-chat__channel-preview-messenger--right">
           <div className="str-chat__channel-preview-messenger--name">
-            {channel.data.name}
+            <span>{channel.data.name}</span>
           </div>
           <div className="str-chat__channel-preview-messenger--last-message">
             {!channel.state.messages[0]

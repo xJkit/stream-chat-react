@@ -15,7 +15,14 @@ export class AttachmentActions extends React.PureComponent {
     text: PropTypes.string,
     /** A list of actions */
     actions: PropTypes.array.isRequired,
-    /** The handler to execute after selecting an action */
+    /**
+     *
+     * Handler for actions. Actions in combination with attachments can be used to build [commands](https://getstream.io/chat/docs/#channel_commands).
+     *
+     * @param name {string} Name of action
+     * @param value {string} Value of action
+     * @param event Dom event that triggered this handler
+     */
     actionHandler: PropTypes.func.isRequired,
   };
 
@@ -28,9 +35,7 @@ export class AttachmentActions extends React.PureComponent {
           <span key={0}>{text}</span>
           {actions.map((action) => (
             <button
-              className={`str-chat__message-attachment-actions-button str-chat__message-attachment-actions-button--${
-                action.style
-              }`}
+              className={`str-chat__message-attachment-actions-button str-chat__message-attachment-actions-button--${action.style}`}
               key={`${id}-${action.value}`}
               data-value={action.value}
               onClick={actionHandler.bind(this, action.name, action.value)}

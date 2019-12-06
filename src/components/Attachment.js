@@ -18,21 +18,24 @@ import { Audio } from './Audio';
 export class Attachment extends PureComponent {
   attachmentRef = React.createRef();
   static propTypes = {
-    /** The attachment to render */
+    /**
+     * The attachment to render
+     * @see See [Attachment structure](https://getstream.io/chat/docs/#message_format)
+     *
+     *  */
     attachment: PropTypes.object.isRequired,
     /**
-		The handler function to call when an action is selected on an attachment.
-		Examples include canceling a \/giphy command or shuffling the results.
-		*/
+     *
+     * Handler for actions. Actions in combination with attachments can be used to build [commands](https://getstream.io/chat/docs/#channel_commands).
+     *
+     * @param name {string} Name of action
+     * @param value {string} Value of action
+     * @param event Dom event that triggered this handler
+     */
     actionHandler: PropTypes.func.isRequired,
   };
 
-  render() {
-    const { attachment: a } = this.props;
-    if (!a) {
-      return null;
-    }
-
+  attachmentType(a) {
     let type, extra;
     if (a.actions && a.actions.length > 0) {
       extra = 'actions';
@@ -53,61 +56,67 @@ export class Attachment extends PureComponent {
       type = 'card';
       extra = 'no-image';
     }
+    return { type, extra };
+  }
 
+  renderAttachmentActions = (a) => (
+    <AttachmentActions
+      key={'key-actions-' + a.id}
+      {...a}
+      actionHandler={this.props.actionHandler}
+    />
+  );
+
+  renderAttachment = (a) => (
+    <div style={{ maxWidth: 450 }} key={`key-image-${a.id}`}>
+      <Card {...a} key={`key-card-${a.id}`} />
+      {this.renderAttachmentActions(a)}
+    </div>
+  );
+
+  render() {
+    const { attachment: a } = this.props;
+    if (!a) {
+      return null;
+    }
+
+    const { type, extra } = this.attachmentType(a);
     if (type === 'card' && !a.title_link && !a.og_scrape_url) {
       return null;
     }
     const results = [];
-    if (type === 'card') {
-      if (a.actions && a.actions.length) {
-        results.push(
-          <div style={{ maxWidth: 450 }} key={`key-image-${a.id}`}>
-            <Card {...a} key={`key-card-${a.id}`} />
-            <AttachmentActions
-              key={'key-actions-' + a.id}
-              {...a}
-              actionHandler={this.props.actionHandler}
-            />
-          </div>,
-        );
-      } else {
-        results.push(<Card {...a} key={`key-card-${a.id}`} />);
-      }
-    } else if (type === 'image') {
+    if (type === 'image') {
       if (a.actions && a.actions.length) {
         results.push(
           <div style={{ maxWidth: 450 }} key={`key-image-${a.id}`}>
             <Image {...a} />
-            <AttachmentActions
-              key={'key-actions-' + a.id}
-              {...a}
-              actionHandler={this.props.actionHandler}
-            />
+            {this.renderAttachmentActions(a)}
           </div>,
         );
       } else {
         results.push(<Image {...a} key={`key-image-${a.id}`} />);
       }
     } else if (type === 'file') {
-      results.push(
-        <div
-          className="str-chat__message-attachment-file--item"
-          key={`key-file-${a.id}`}
-        >
-          <FileIcon
-            mimeType={a.mime_type}
-            filename={a.title}
-            big={true}
-            size={30}
-          />
-          <div className="str-chat__message-attachment-file--item-text">
-            <SafeAnchor href={a.asset_url} download>
-              {a.title}
-            </SafeAnchor>
-            {a.file_size && <span>{prettybytes(a.file_size)}</span>}
-          </div>
-        </div>,
-      );
+      a.asset_url &&
+        results.push(
+          <div
+            className="str-chat__message-attachment-file--item"
+            key={`key-file-${a.id}`}
+          >
+            <FileIcon
+              mimeType={a.mime_type}
+              filename={a.title}
+              big={true}
+              size={30}
+            />
+            <div className="str-chat__message-attachment-file--item-text">
+              <SafeAnchor href={a.asset_url} download>
+                {a.title}
+              </SafeAnchor>
+              {a.file_size && <span>{prettybytes(a.file_size)}</span>}
+            </div>
+          </div>,
+        );
     } else if (type === 'audio') {
       results.push(
         <div style={{ maxWidth: 450 }} key={`key-video-${a.id}`}>
@@ -127,11 +136,7 @@ export class Attachment extends PureComponent {
                 controls
               />
             </div>
-            <AttachmentActions
-              key={'key-actions-' + a.id}
-              {...a}
-              actionHandler={this.props.actionHandler}
-            />
+            {this.renderAttachmentActions(a)}
           </div>,
         );
       } else {
@@ -149,26 +154,17 @@ export class Attachment extends PureComponent {
       }
     } else {
       if (a.actions && a.actions.length) {
-        results.push(
-          <div style={{ maxWidth: 450 }} key={`key-image-${a.id}`}>
-            <Card {...a} key={`key-card-${a.id}`} />
-            <AttachmentActions
-              key={'key-actions-' + a.id}
-              {...a}
-              actionHandler={this.props.actionHandler}
-            />
-          </div>,
-        );
+        results.push(this.renderAttachment(a));
       } else {
         results.push(<Card {...a} key={`key-card-${a.id}`} />);
       }
     }
 
+    if (results.length === 0) return null;
+
     return (
       <div
-        className={`str-chat__message-attachment str-chat__message-attachment--${type} str-chat__message-attachment--${
-          a.type
-        } str-chat__message-attachment--${type}--${extra}`}
+        className={`str-chat__message-attachment str-chat__message-attachment--${type} str-chat__message-attachment--${a.type} str-chat__message-attachment--${type}--${extra}`}
         ref={this.attachmentRef}
       >
         {results}

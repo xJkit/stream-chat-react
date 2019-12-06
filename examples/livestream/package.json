@@ -5,8 +5,8 @@
   "dependencies": {
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
-    "react-scripts": "2.1.2",
-    "stream-chat-react": "link:../.."
+    "react-scripts": "2.1.4",
+    "stream-chat-react": "0.7.12"
   },
   "scripts": {
     "start": "react-scripts start",

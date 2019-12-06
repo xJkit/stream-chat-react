@@ -15,14 +15,30 @@ import { defaultMinimalEmojis, emojiSetDef, emojiData } from '../utils';
  */
 export class ReactionSelector extends PureComponent {
   static propTypes = {
-    /** Object containgin latest reactions */
-    latest_reactions: PropTypes.array.isRequired,
-    /** Object containing the reaction counts */
+    /**
+     * Array of latest reactions.
+     * Reaction object has following structure:
+     *
+     * ```json
+     * {
+     *  "type": "love",
+     *  "user_id": "demo_user_id",
+     *  "user": {
+     *    ...userObject
+     *  },
+     *  "created_at": "datetime";
+     * }
+     * ```
+     * */
+    latest_reactions: PropTypes.array,
+    /** Object/map of reaction id/type (e.g. 'like' | 'love' | 'haha' | 'wow' | 'sad' | 'angry') vs count */
     reaction_counts: PropTypes.object,
-    /** Callback to handle the reaction */
+    /**
+     * Callback to handle the reaction
+     *
+     * @param type e.g. 'like' | 'love' | 'haha' | 'wow' | 'sad' | 'angry'
+     * */
     handleReaction: PropTypes.func.isRequired,
-    /** Set the direction to either left or right */
-    direction: PropTypes.oneOf(['left', 'right']),
     /** Enable the avatar display */
     detailedView: PropTypes.bool,
     /** Provide a list of reaction options [{name: 'angry', emoji: 'angry'}] */
@@ -76,11 +92,8 @@ export class ReactionSelector extends PureComponent {
     }));
   };
 
-  getUsersPerReaction = (reactions, type) => {
-    const filtered =
-      reactions && reactions.filter((item) => item.type === type);
-    return filtered;
-  };
+  getUsersPerReaction = (reactions, type) =>
+    reactions && reactions.filter((item) => item.type === type);
 
   getLatestUser = (reactions, type) => {
     const filtered = this.getUsersPerReaction(reactions, type);
@@ -93,8 +106,7 @@ export class ReactionSelector extends PureComponent {
 
   getUserNames = (reactions, type) => {
     const filtered = this.getUsersPerReaction(reactions, type);
-    const users = filtered && filtered.map((item) => item.user || 'NotFound');
-    return users;
+    return filtered && filtered.map((item) => item.user || 'NotFound');
   };
 
   getContainerDimensions = () =>
@@ -131,7 +143,7 @@ export class ReactionSelector extends PureComponent {
 
   renderReactionItems = () => {
     const { reaction_counts, latest_reactions } = this.props;
-    const lis = this.props.reactionOptions.map((reaction) => {
+    return this.props.reactionOptions.map((reaction) => {
       const users = this.getUserNames(latest_reactions, reaction.id);
       const latestUser = this.getLatestUser(latest_reactions, reaction.id);
 
@@ -174,7 +186,6 @@ export class ReactionSelector extends PureComponent {
         </li>
       );
     });
-    return lis;
   };
 
   renderUsers = (users) =>

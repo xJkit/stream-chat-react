@@ -91,10 +91,7 @@ export const isOnlyEmojis = (text) => {
   return !noSpace;
 };
 
-export const isPromise = (thing) => {
-  const promise = thing && typeof thing.then === 'function';
-  return promise;
-};
+export const isPromise = (thing) => thing && typeof thing.then === 'function';
 
 export const byDate = (a, b) => a.created_at - b.created_at;
 
@@ -130,11 +127,11 @@ export const renderMML = (message, actionHandler) => {
   const { mml } = message;
   if (mml) {
     // render MML, perhaps have a fallback for text?
-    return <MML source={mml} onAction={actionHandler.bind(this, 'MML')}/>;
+    return <MML source={mml} onAction={actionHandler.bind(this, 'MML')} />;
   } else {
     return renderText(message);
   }
-}
+};
 
 export const renderText = (message) => {
   // take the @ mentions and turn them into markdown?
@@ -211,7 +208,7 @@ export const smartRender = (ElementOrComponentOrLiteral, props, fallback) => {
   }
   if (React.isValidElement(ElementOrComponentOrLiteral)) {
     // Flow cast through any, to make flow believe it's a React.Element
-    const element = ElementOrComponentOrLiteral;
+    const element = ElementOrComponentOrLiteral; // eslint-disable-line
     return element;
   }
 
@@ -227,4 +224,11 @@ export const smartRender = (ElementOrComponentOrLiteral, props, fallback) => {
     return ComponentOrLiteral;
   }
   return <ComponentOrLiteral {...props} />;
+};
+
+export const MESSAGE_ACTIONS = {
+  edit: 'edit',
+  delete: 'delete',
+  flag: 'flag',
+  mute: 'mute',
 };

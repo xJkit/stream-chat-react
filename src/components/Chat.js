@@ -18,23 +18,50 @@ import { ChatContext } from '../context';
  * @example ./docs/Chat.md
  * @extends PureComponent
  */
-
-const colors = ['light', 'dark'];
-const baseUseCases = ['messaging', 'team', 'commerce', 'gaming', 'livestream'];
-const themes = [];
-
-for (const color of colors) {
-  for (const useCase of baseUseCases) {
-    themes.push(`${useCase} ${color}`);
-  }
-}
-
 export class Chat extends PureComponent {
   static propTypes = {
     /** The StreamChat client object */
     client: PropTypes.object.isRequired,
-    /** The theme 'messaging', 'team', 'commerce', 'gaming', 'livestream' plus either 'light' or 'dark' */
-    theme: PropTypes.oneOf(themes),
+    /**
+     *
+     * Theme could be used for custom styling of the components.
+     *
+     * You can override the classes used in our components under parent theme class.
+     *
+     * e.g. If you want to build a theme where background of message is black
+     *
+     * ```
+     *  <Chat client={client} theme={demo}>
+     *    <Channel>
+     *      <MessageList />
+     *    </Channel>
+     *  </Chat>
+     * ```
+     *
+     * ```scss
+     *  .demo.str-chat {
+     *    .str-chat__message-simple {
+     *      &-text-inner {
+     *        background-color: black;
+     *      }
+     *    }
+     *  }
+     * ```
+     *
+     * Built in available themes:
+     *
+     *  - `messaging light`
+     *  - `messaging dark`
+     *  - `team light`
+     *  - `team dark`
+     *  - `commerce light`
+     *  - `commerce dark`
+     *  - `gaming light`
+     *  - `gaming dark`
+     *  - `livestream light`
+     *  - `livestream dark`
+     */
+    theme: PropTypes.string,
   };
 
   static defaultProps = {
@@ -51,11 +78,13 @@ export class Chat extends PureComponent {
     };
   }
 
-  setActiveChannel = (channel, e) => {
+  setActiveChannel = async (channel, watchers = {}, e) => {
     if (e !== undefined && e.preventDefault) {
       e.preventDefault();
     }
-
+    if (Object.keys(watchers).length) {
+      await channel.query({ watch: true, watchers });
+    }
     this.setState(() => ({
       channel,
     }));

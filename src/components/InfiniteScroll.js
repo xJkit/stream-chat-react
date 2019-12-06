@@ -12,6 +12,7 @@ export default class InfiniteScroll extends Component {
     loader: PropTypes.node,
     loadMore: PropTypes.func.isRequired,
     pageStart: PropTypes.number,
+    isLoading: PropTypes.bool,
     ref: PropTypes.func,
     threshold: PropTypes.number,
     useCapture: PropTypes.bool,
@@ -22,6 +23,7 @@ export default class InfiniteScroll extends Component {
     element: 'div',
     hasMore: false,
     initialLoad: true,
+    isLoading: false,
     pageStart: 0,
     ref: null,
     threshold: 250,
@@ -165,7 +167,8 @@ export default class InfiniteScroll extends Component {
     // Here we make sure the element is visible as well as checking the offset
     if (
       offset < Number(this.props.threshold) &&
-      (el && el.offsetParent !== null)
+      el &&
+      el.offsetParent !== null
     ) {
       this.detachScrollListener();
       // Call loadMore after detachScrollListener to allow for non-async loadMore functions

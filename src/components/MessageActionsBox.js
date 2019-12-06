@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { MESSAGE_ACTIONS } from '../utils';
 
 /**
  * MessageActionsBox - A component for taking action on a message
@@ -11,19 +12,24 @@ export class MessageActionsBox extends React.Component {
   static propTypes = {
     /** If the message actions box should be open or not */
     open: PropTypes.bool.isRequired,
-    /** The message component, most logic is delegated to this component and MessageActionsBox uses the following functions explicitely:
-     *  `handleFlag`, `handleMute`, `handleEdit`, `handleDelete`, `canDeleteMessagec`, `anEditMessage`, `isMyMessage`, `isAdmin`
+    /**
+     * @deprecated
+     *
+     *  The message component, most logic is delegated to this component and MessageActionsBox uses the following functions explicitly:
+     *  `handleFlag`, `handleMute`, `handleEdit`, `handleDelete`, `canDeleteMessage`, `canEditMessage`, `isMyMessage`, `isAdmin`
      */
     Message: PropTypes.oneOfType([
       PropTypes.node,
       PropTypes.func,
       PropTypes.object,
     ]).isRequired,
-    /** The message for which the action box is displayed */
-    message: PropTypes.object.isRequired,
+    /** If message belongs to current user. */
+    mine: PropTypes.bool,
+    /** DOMRect object for parent MessageList component */
+    messageListRect: PropTypes.object,
   };
 
-  static defaultProp = {
+  static defaultProps = {
     open: false,
   };
 
@@ -58,7 +64,15 @@ export class MessageActionsBox extends React.Component {
   }
 
   render() {
-    const { Message, message } = this.props;
+    const {
+      handleFlag,
+      handleMute,
+      handleEdit,
+      handleDelete,
+      getMessageActions,
+    } = this.props;
+    const messageActions = getMessageActions();
+
     return (
       <div
         className={`str-chat__message-actions-box
@@ -69,25 +83,25 @@ export class MessageActionsBox extends React.Component {
         ref={this.actionsBoxRef}
       >
         <ul className="str-chat__message-actions-list">
-          {Message.isMyMessage && !Message.isMyMessage(message) && (
-            <button onClick={Message.handleFlag}>
+          {messageActions.indexOf(MESSAGE_ACTIONS.flag) > -1 && (
+            <button onClick={handleFlag}>
               <li className="str-chat__message-actions-list-item">Flag</li>
             </button>
           )}
-          {Message.isMyMessage && !Message.isMyMessage(message) && (
-            <button onClick={Message.handleMute}>
+          {messageActions.indexOf(MESSAGE_ACTIONS.mute) > -1 && (
+            <button onClick={handleMute}>
               <li className="str-chat__message-actions-list-item">Mute</li>
             </button>
           )}
-          {Message.canEditMessage && Message.canEditMessage(message) && (
-            <button onClick={Message.handleEdit}>
+          {messageActions.indexOf(MESSAGE_ACTIONS.edit) > -1 && (
+            <button onClick={handleEdit}>
               <li className="str-chat__message-actions-list-item">
                 Edit Message
               </li>
             </button>
           )}
-          {Message.canDeleteMessage && Message.canDeleteMessage(message) && (
-            <button onClick={Message.handleDelete}>
+          {messageActions.indexOf(MESSAGE_ACTIONS.delete) > -1 && (
+            <button onClick={handleDelete}>
               <li className="str-chat__message-actions-list-item">Delete</li>
             </button>
           )}

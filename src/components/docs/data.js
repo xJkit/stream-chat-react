@@ -1,4 +1,5 @@
 /* global require */
+/* eslint sonarjs/no-duplicate-string: 0 */
 
 const StreamChat = require('stream-chat').StreamChat;
 
@@ -20,6 +21,17 @@ export const channel = client.channel('team', 'docs', {
 export const channelContext = {
   client,
   channel,
+  updateMessage: () => {},
+  removeMessage: () => {},
+  sendMessage: () => {},
+  retrySendMessage: () => {},
+  resetNotification: () => {},
+  loadMore: () => {},
+  openThread: () => {},
+  closeThread: () => {},
+  loadMoreThread: () => {},
+  onMentionsClick: () => {},
+  onMentionsHover: () => {},
 };
 
 const filters = { type: 'team', example: 1 };
@@ -301,4 +313,5 @@ export const MessageMock = {
   handleDelete: console.log,
   canDeleteMessage: () => true,
   canEditMessage: () => true,
+  getMessageActions: () => [],
 };
