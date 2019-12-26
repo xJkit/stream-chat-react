@@ -9,7 +9,7 @@ import { MessageRepliesCountButton } from './MessageRepliesCountButton';
 import PropTypes from 'prop-types';
 import moment from 'moment';
 
-import { isOnlyEmojis, renderMML } from '../utils';
+import { isOnlyEmojis, renderText } from '../utils';
 
 /**
  * MessageCommerce - Render component, should be used together with the Message component

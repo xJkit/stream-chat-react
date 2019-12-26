@@ -37,6 +37,7 @@
     "react-player": "^1.8.0",
     "react-textarea-autosize": "^7.1.0",
     "seamless-immutable": "^7.1.4",
+    "mml-react": "link:/Users/thierry/workspace/mml-react",
     "shallow-diff": "^0.0.5",
     "stream-browserify": "^2.0.2",
     "stream-chat": "^1.2.1",

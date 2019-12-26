@@ -7,6 +7,7 @@ import { FileIcon } from 'react-file-utils';
 import prettybytes from 'pretty-bytes';
 import PropTypes from 'prop-types';
 import { SafeAnchor } from './SafeAnchor';
+import { MML } from 'mml-react';
 
 import { Audio } from './Audio';
 /**
@@ -52,6 +53,8 @@ export class Attachment extends PureComponent {
       type = 'audio';
     } else if (a.type === 'video') {
       type = 'media';
+    } else if (a.type === 'mml') {
+      type = 'mml';
     } else {
       type = 'card';
       extra = 'no-image';
@@ -76,6 +79,8 @@ export class Attachment extends PureComponent {
 
   render() {
     const { attachment: a } = this.props;
+    console.log('a', a);
+
     if (!a) {
       return null;
     }
@@ -152,6 +157,18 @@ export class Attachment extends PureComponent {
           </div>,
         );
       }
+    } else if (type === 'mml') {
+      //const MMLTag = (this.props.client.MML) ? this.props.client.MML : MML
+      const MMLTag = MML;
+      results.push(
+        <div style={{ maxWidth: 450 }} key={`key-mml-${a.id}`}>
+          <MMLTag
+            source={a.mml}
+            key={`mml-${a.id}`}
+            submit={this.props.actionHandler.bind(this, 'MML')}
+          />
+        </div>,
+      );
     } else {
       if (a.actions && a.actions.length) {
         results.push(this.renderAttachment(a));
