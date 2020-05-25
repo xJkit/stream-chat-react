@@ -30,12 +30,12 @@ const normalBundle = {
   ...baseConfig,
   output: [
     {
-      file: pkg.main,
+      dir: 'dist/main',
       format: 'cjs',
       sourcemap: true,
     },
     {
-      file: pkg.module,
+      dir: 'dist/module',
       format: 'es',
       sourcemap: true,
     },
