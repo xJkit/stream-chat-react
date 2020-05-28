@@ -539,7 +539,7 @@ export interface MessageUIComponentProps
     value: string,
     event: React.BaseSyntheticEvent,
   ): void;
-  handleRetry?(message: Client.Message): void;
+  handleRetry?(message: Client.MessageResponse): void;
   isMyMessage?(message: Client.MessageResponse): boolean;
   isUserMuted?(): boolean;
   handleOpenThread?(event: React.BaseSyntheticEvent): void;

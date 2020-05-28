@@ -452,7 +452,11 @@ class Message extends Component {
   };
 
   handleRetry = async (message) => {
-    await this.props.retrySendMessage(message);
+    await this.props.retrySendMessage({
+      ...message,
+      // Send message endpoint expects array of strings, not array of User objects
+      mentioned_users: message.mentioned_users?.map(({ id }) => id),
+    });
   };
 
   onMentionsClick = (e) => {
