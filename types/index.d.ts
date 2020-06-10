@@ -323,7 +323,7 @@ export interface EmptyStateIndicatorProps extends TranslationContextValue {
 
 export interface SendButtonProps {
   /** Function that gets triggered on click */
-  sendMessage?(message: Client.Message): void;
+  sendMessage?(e: React.MouseEvent): void;
 }
 
 export interface MessageListProps
