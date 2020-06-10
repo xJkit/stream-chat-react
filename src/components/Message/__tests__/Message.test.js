@@ -8,7 +8,7 @@ import {
   generateMessage,
   generateReaction,
 } from 'mock-builders';
-import { MESSAGE_ACTIONS } from '../../../utils';
+import { MESSAGE_ACTIONS } from '../Message/utils';
 import Message from '../Message';
 
 const alice = generateUser({
